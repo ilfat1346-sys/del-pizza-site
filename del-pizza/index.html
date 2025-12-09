@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Del Pizza Menu</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 10px;
+            background-color: #ffcc00;
+            color: #000;
+            font-weight: bold;
+            font-size: 22px;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .logo {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            margin-bottom: 5px;
+            border: 3px solid #fff;
+        }
+        .category-title {
+            margin: 20px 10px 10px;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--tg-theme-text-color, #000);
+            border-bottom: 2px solid #ffcc00;
+            display: inline-block;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 10px;
+            padding-bottom: 100px;
+        }
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-radius: 15px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .card:active { transform: scale(0.98); }
+        .card img {
+            width: 100%;
+            height: 110px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+        .card h3 {
+            font-size: 15px;
+            margin: 5px 0;
+            line-height: 1.2;
+        }
+        .desc {
+            font-size: 11px;
+            color: #777;
+            margin-bottom: 8px;
+            line-height: 1.3;
+            height: 42px; /* Фикс высота */
+            overflow: hidden;
+        }
+        .price {
+            font-weight: 900;
+            font-size: 17px;
+            margin-bottom: 10px;
+            color: var(--tg-theme-text-color, #000);
+        }
+        .add-btn {
+            background-color: #ffcc00;
+            color: #000;
+            border: none;
+            padding: 10px 0;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            width: 100%;
+        }
+        /* Кнопки управления количеством */
+        .btn-control {
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+            border-radius: 12px;
+            padding: 2px;
+            border: 1px solid #ddd;
+        }
+        .btn-control button {
+            background-color: #ffcc00;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .btn-control span {
+            font-weight: bold;
+            font-size: 16px;
+            width: 20px;
+        }
+        /* Главная кнопка */
+        #main-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #31b545;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            width: 92%;
+            z-index: 1000;
+            box-shadow: 0 5px 15px rgba(49, 181, 69, 0.4);
+            display: none;
+            cursor: pointer;
+        }
+        #main-btn:active { transform: translateX(-50%) scale(0.98); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <img src="https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d409929f88063063ee59264/orig" class="logo">
+        <br>🍕 Del Pizza Menu
+    </div>
+
+    <div id="app"></div>
+
+    <button id="main-btn" onclick="sendOrder()">Оформить заказ</button>
+
+<script>
+    let tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // --- ПОЛНАЯ БАЗА ДАННЫХ (ВСЕ ВАШИ ТОВАРЫ) ---
+    const menu = [
+        {
+            category: "🍕 ПИЦЦА",
+            items: [
+                {id: "p_del", name: "Del Pizza", price: 400, desc: "Фирменная: соус, филе, колбаса, грибы.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d409929f88063063ee59264/orig"},
+                {id: "p_assorti", name: "Ассорти", price: 400, desc: "Сыр, моцарелла, колбаса, перец.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d413c7c23bc672e85d1ed06/orig"},
+                {id: "p_pep", name: "Пепперони", price: 400, desc: "Острая колбаска, сыр.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d413b5c9f7cd772d7f41709/orig"},
+                {id: "p_home", name: "Домашняя", price: 400, desc: "Филе, сыр, помидоры, опята.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d414108c33ba5ac9b4479cf/orig"},
+                {id: "p_mex", name: "Мексиканская", price: 400, desc: "Филе, перец, халапеньо.", img: "https://avatars.mds.yandex.net/get-sprav-products/11530991/2a0000018f0b4d41400aeac54e8c3616fb4c/orig"},
+                {id: "p_hawaii", name: "Гавайская", price: 400, desc: "Филе, ананасы, белый соус.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d413e5e4c13ceaf8943392c/orig"},
+                {id: "p_caesar", name: "Цезарь", price: 400, desc: "Филе, салат, пармезан.", img: "https://avatars.mds.yandex.net/get-sprav-products/11530991/2a0000018f0b4d40cca58347c5761fb50126/orig"},
+                {id: "p_salami", name: "Салями", price: 400, desc: "Колбаса, перец, красный соус.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d414115e44c7b5edd2b227f/orig"},
+                {id: "p_4cheese", name: "4 Сырa", price: 400, desc: "Моцарелла, фета, пармезан.", img: "https://avatars.mds.yandex.net/get-sprav-products/11530991/2a0000018f0b4d41565032543d9ab67a840a/orig"},
+                {id: "p_marg", name: "Маргарита", price: 400, desc: "Сыр, помидоры, классика.", img: "https://avatars.mds.yandex.net/get-sprav-products/11530991/2a0000018f0b4d40dbf8ab3732deb70f4e8c/orig"},
+                {id: "p_white", name: "Белая", price: 400, desc: "Яйца, укроп, белый соус.", img: "https://avatars.mds.yandex.net/get-sprav-products/9896919/2a0000019063ad7112332a346a11ffd3749d/orig"},
+                {id: "p_slice", name: "Кусочек", price: 70, desc: "Кусочек пиццы (100 гр).", img: "https://avatars.mds.yandex.net/get-sprav-products/944742/2a00000191427aaffcc20360dfcaa31d48bd/orig"},
+            ]
+        },
+        {
+            category: "🍔 ФАСТ-ФУД",
+            items: [
+                {id: "f_kysty", name: "Кыстыбургер", price: 240, desc: "Токмак, курица, BBQ.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d4136c2d2f8e58f2825157b/orig"},
+                {id: "f_shaurma", name: "Шаурма", price: 220, desc: "Курица, овощи, лаваш.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d42152e8db3ac51db685e7c/orig"},
+                {id: "f_burger", name: "Бургер", price: 170, desc: "Котлета, овощи, кунжут.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d407af0011cfdac202b8025/orig"},
+                {id: "f_hot_m", name: "Хот-дог Мясо", price: 140, desc: "С мясом и сыром.", img: "https://avatars.mds.yandex.net/get-sprav-products/11530991/2a0000018f0b4d403541d75290a455521e07/orig"},
+                {id: "f_hot_s", name: "Хот-дог Сосиска", price: 100, desc: "С сосиской и морковкой.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d4187a8087dd39d2183daa6/orig"},
+            ]
+        },
+        {
+            category: "🍜 WOK И БОУЛЫ",
+            items: [
+                {id: "w_kush", name: "Сытый куш", price: 250, desc: "Картофель, мясо, овощи.", img: "https://avatars.mds.yandex.net/get-sprav-products/11530991/2a0000018f0b4d409149fa840d5a9dcfd45f/orig"},
+                {id: "w_tyahan", name: "Тяхан", price: 240, desc: "Рис, курица, терияки.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d4090e0ef37bc7a9ace2837/orig"},
+                {id: "w_noodle", name: "Лапша WOK", price: 240, desc: "Удон, курица, терияки.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d40878fce25082674c41e73/orig"},
+                {id: "b_shrimp", name: "Боул Креветки", price: 340, desc: "Рис, авокадо, креветки.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d416275afdb08516c4d7473/orig"},
+                {id: "b_salmon", name: "Боул Лосось", price: 340, desc: "Рис, авокадо, лосось.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d414eff414b1fb1a52496c5/orig"},
+                {id: "b_chicken", name: "Боул Курица", price: 320, desc: "Рис, авокадо, курица.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d42224e0de0e2e69559cdf1/orig"},
+            ]
+        },
+        {
+            category: "🥗 САЛАТЫ",
+            items: [
+                {id: "s_caesar_sh", name: "Цезарь Креветки", price: 300, desc: "Классический с креветками.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d41b4b35ebbf8f1f92da273/orig"},
+                {id: "s_caesar_ch", name: "Цезарь Курица", price: 290, desc: "Классический с курицей.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d415f0ab00f7cae82117e15/orig"},
+                {id: "s_greek", name: "Греческий", price: 240, desc: "Овощи, фета, маслины.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d422a3ffb960be49e947041/orig"},
+            ]
+        },
+        {
+            category: "🍟 ЗАКУСКИ И ДЕСЕРТЫ",
+            items: [
+                {id: "sn_nuggets", name: "Наггетсы", price: 160, desc: "8 штук.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d4220125460b80824087625/orig"},
+                {id: "sn_pot_w", name: "Картофель дер.", price: 150, desc: "Дольки с солью.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d4208f692df7bd68c0d4413/orig"},
+                {id: "sn_fries", name: "Фри", price: 100, desc: "Хрустящий картофель.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d4221408c51e4552bf76cc2/orig"},
+                {id: "sn_cheese", name: "Чизкейк", price: 150, desc: "Нью-Йорк.", img: "https://avatars.mds.yandex.net/get-sprav-products/11530991/2a0000018f0b4d415a4692a8f6a9dbf55a55/orig"},
+                {id: "sn_cake", name: "Торт", price: 90, desc: "Кусочек торта.", img: "https://avatars.mds.yandex.net/get-sprav-products/11530991/2a0000018f0b4d415a4692a8f6a9dbf55a55/orig"},
+            ]
+        },
+        {
+            category: "🍹 НАПИТКИ",
+            items: [
+                {id: "d_fresh", name: "Апельсин Фреш", price: 300, desc: "Свежевыжатый, 300 мл.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d420ed6266e82aa0b80d0e0/orig"},
+                {id: "d_smoothie", name: "Смузи", price: 200, desc: "Ягодный или Детокс.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d4079183031bf3a83708064/orig"},
+                {id: "d_shake", name: "Коктейль", price: 150, desc: "Молочный (разные вкусы).", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d4203057a421b27d7d7d61f/orig"},
+                {id: "d_juice", name: "Сок", price: 100, desc: "0.5 л.", img: "https://avatars.mds.yandex.net/get-sprav-products/2994796/2a000001915361d02d8e35c5d7bee59dc8d2/orig"},
+                {id: "d_cola", name: "Кола", price: 90, desc: "0.5 л.", img: "https://avatars.mds.yandex.net/get-sprav-products/1540730/2a000001915361d0b242fca0468efedaa7b2/orig"},
+            ]
+        }
+    ];
+
+    let cart = {}; 
+    const app = document.getElementById("app");
+
+    // Отрисовка
+    menu.forEach(section => {
+        let catTitle = document.createElement("div");
+        catTitle.className = "category-title";
+        catTitle.innerText = section.category;
+        app.appendChild(catTitle);
+
+        let container = document.createElement("div");
+        container.className = "container";
+
+        section.items.forEach(item => {
+            let card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+                <img src="${item.img}">
+                <h3>${item.name}</h3>
+                <div class="desc">${item.desc}</div>
+                <div class="price">${item.price} ₽</div>
+                
+                <button class="add-btn" id="btn_${item.id}" onclick="add('${item.id}')">В корзину</button>
+                
+                <div class="btn-control" id="control_${item.id}">
+                    <button onclick="minus('${item.id}')">-</button>
+                    <span id="count_${item.id}">0</span>
+                    <button onclick="add('${item.id}')">+</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        app.appendChild(container);
+    });
+
+    // Логика корзины
+    function add(id) {
+        if (!cart[id]) cart[id] = 0;
+        cart[id]++;
+        updateUI(id);
+    }
+
+    function minus(id) {
+        if (cart[id] > 0) cart[id]--;
+        if (cart[id] === 0) delete cart[id];
+        updateUI(id);
+    }
+
+    function updateUI(id) {
+        const btn = document.getElementById(`btn_${id}`);
+        const control = document.getElementById(`control_${id}`);
+        const countSpan = document.getElementById(`count_${id}`);
+
+        if (cart[id]) {
+            btn.style.display = "none";
+            control.style.display = "flex";
+            countSpan.innerText = cart[id];
+        } else {
+            btn.style.display = "block";
+            control.style.display = "none";
+        }
+        updateMainButton();
+    }
+
+    function updateMainButton() {
+        let total = 0;
+        for (let section of menu) {
+            for (let item of section.items) {
+                if (cart[item.id]) total += item.price * cart[item.id];
+            }
+        }
+
+        const mainBtn = document.getElementById("main-btn");
+        if (total > 0) {
+            mainBtn.style.display = "block";
+            mainBtn.innerText = `Оформить заказ на ${total} ₽`;
+        } else {
+            mainBtn.style.display = "none";
+        }
+    }
+
+    function sendOrder() {
+        let totalStr = document.getElementById("main-btn").innerText;
+        let data = { cart: cart, total: totalStr };
+        tg.sendData(JSON.stringify(data)); 
+    }
+</script>
+
+</body>
+</html>
