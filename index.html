@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Del Pizza App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ffcc00; /* Желтый */
+            --accent: #ff9900;  /* Оранжевый */
+            --bg: #f9f9f9;
+            --text: #333;
+            --green: #2ecc71;
+            --white: #ffffff;
+            --shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: 90px; /* Место под нижнюю панель */
+        }
+
+        /* --- НАВИГАЦИЯ (ТАБЫ) --- */
+        .nav-scroll {
+            position: sticky;
+            top: 0;
+            background: var(--white);
+            padding: 10px 0;
+            overflow-x: auto;
+            white-space: nowrap;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            scrollbar-width: none; /* Скрыть скроллбар */
+        }
+        .nav-scroll::-webkit-scrollbar { display: none; }
+        
+        .nav-item {
+            display: inline-block;
+            padding: 8px 16px;
+            margin: 0 5px;
+            background: #eee;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            color: #777;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-item:first-child { margin-left: 15px; }
+        .nav-item.active {
+            background: var(--primary);
+            color: #000;
+            transform: scale(1.05);
+        }
+
+        /* --- МЕНЮ (СЕТКА) --- */
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 15px;
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 10px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.1s;
+        }
+        .card:active { transform: scale(0.98); }
+        
+        .card img {
+            width: 100%;
+            height: 110px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .card h3 {
+            font-size: 15px;
+            margin: 0 0 5px;
+            line-height: 1.2;
+            font-weight: 800;
+        }
+        
+        .card .desc {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+            height: 32px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .price {
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        /* Кнопка "Добавить" */
+        .add-btn {
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .add-btn.active {
+            background: var(--primary);
+            color: #000;
+        }
+
+        /* --- КОРЗИНА (MODAL) --- */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff;
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 15px;
+            background: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .close-btn { font-size: 24px; cursor: pointer; background: none; border: none; }
+        
+        .cart-items { padding: 15px; }
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .qty-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 5px;
+        }
+        .qty-btn { width: 25px; height: 25px; border: none; background: #fff; border-radius: 6px; font-weight: bold; }
+
+        /* --- ФОРМА ОФОРМЛЕНИЯ --- */
+        .order-form { padding: 15px; background: #fafafa; border-radius: 20px; margin: 15px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 13px; color: #777; font-weight: 700; }
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        
+        .radio-group { display: flex; gap: 10px; }
+        .radio-option {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .radio-option.selected {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #000;
+        }
+
+        /* --- НИЖНЯЯ ПАНЕЛЬ --- */
+        .bottom-bar {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            background: var(--white);
+            padding: 10px 15px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            z-index: 1000;
+        }
+        .main-btn {
+            background: var(--green);
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 16px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        /* ИСТОРИЯ ЗАКАЗОВ */
+        .history-card { background: #fff; padding: 15px; margin: 10px 15px; border-radius: 15px; border: 1px solid #eee; }
+        .history-date { font-size: 12px; color: #999; }
+        .history-total { font-weight: 800; color: var(--green); float: right; }
+
+        /* АНИМАЦИИ */
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="nav-scroll" id="nav-bar">
+        </div>
+
+    <div id="main-view">
+        <div class="container" id="menu-container"></div>
+    </div>
+
+    <div id="history-view" style="display: none; padding-bottom: 20px;">
+        <h2 style="padding: 15px;">📜 История заказов</h2>
+        <div id="history-list"></div>
+        <button onclick="switchView('main')" style="margin: 15px; padding: 10px; border:none; background: #eee; border-radius: 10px;">⬅️ Вернуться в меню</button>
+    </div>
+
+    <div class="bottom-bar">
+        <div style="font-weight: 800; font-size: 18px;" id="total-price">0 ₽</div>
+        <button class="main-btn" id="cart-btn" onclick="openCart()">Корзина пуста</button>
+    </div>
+
+    <div class="modal" id="cart-modal">
+        <div class="modal-header">
+            <h2>🛒 Корзина</h2>
+            <button class="close-btn" onclick="closeCart()">✕</button>
+        </div>
+        
+        <div class="cart-items" id="cart-list"></div>
+
+        <div class="order-form" id="order-form" style="display:none;">
+            <h3>📦 Оформление</h3>
+            
+            <div class="form-group">
+                <label>Способ получения:</label>
+                <div class="radio-group">
+                    <div class="radio-option selected" onclick="selectOption('delivery', 'delivery')">🚗 Доставка</div>
+                    <div class="radio-option" onclick="selectOption('delivery', 'pickup')">🏃 Самовывоз</div>
+                </div>
+            </div>
+
+            <div id="address-block" class="form-group">
+                <label>Адрес доставки:</label>
+                <input type="text" class="form-control" id="address" placeholder="Улица, дом, квартира">
+            </div>
+
+            <div class="form-group">
+                <label>Ваш телефон:</label>
+                <input type="tel" class="form-control" id="phone" placeholder="+7 (9xx) xxx-xx-xx">
+            </div>
+
+            <div class="form-group">
+                <label>Способ оплаты:</label>
+                <div class="radio-group">
+                    <div class="radio-option selected" onclick="selectOption('payment', 'transfer')">💳 Перевод</div>
+                    <div class="radio-option" onclick="selectOption('payment', 'yookassa')">🟣 ЮKassa</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="padding: 15px;">
+            <button class="main-btn" id="checkout-btn" onclick="submitOrder()" style="background: var(--primary); color: #000;">Подтвердить заказ</button>
+        </div>
+    </div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // --- БАЗА ДАННЫХ ---
+    const menuData = [
+        {
+            category: "Пицца",
+            items: [
+                {id: "p_del", name: "Del Pizza", price: 400, desc: "Фирменная: соус, филе, колбаса, грибы.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d409929f88063063ee59264/orig"},
+                {id: "p_pep", name: "Пепперони", price: 400, desc: "Красный соус, сыр, пепперони.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d413b5c9f7cd772d7f41709/orig"},
+                {id: "p_assorti", name: "Ассорти", price: 400, desc: "Сыр, моцарелла, колбаса, перец.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d413c7c23bc672e85d1ed06/orig"}
+            ]
+        },
+        {
+            category: "Фаст-фуд",
+            items: [
+                {id: "f_burger", name: "Бургер", price: 170, desc: "Сочная котлета, овощи.", img: "https://avatars.mds.yandex.net/get-sprav-products/13055270/2a0000018f0b4d407af0011cfdac202b8025/orig"},
+                {id: "f_shaurma", name: "Шаурма", price: 220, desc: "Классическая с курицей.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d42152e8db3ac51db685e7c/orig"}
+            ]
+        },
+        {
+            category: "WOK",
+            items: [
+                {id: "w_noodle", name: "Лапша WOK", price: 240, desc: "Удон с курицей и терияки.", img: "https://avatars.mds.yandex.net/get-sprav-products/13059590/2a0000018f0b4d40878fce25082674c41e73/orig"}
+            ]
+        },
+        {
+            category: "Напитки",
+            items: [
+                {id: "d_cola", name: "Кола 0.5", price: 90, desc: "Холодная.", img: "https://avatars.mds.yandex.net/get-sprav-products/1540730/2a000001915361d0b242fca0468efedaa7b2/orig"}
+            ]
+        }
+    ];
+
+    let cart = {};
+    let currentCategory = "Пицца";
+    let deliveryType = "delivery";
+    let paymentType = "transfer";
+
+    // --- ИНИЦИАЛИЗАЦИЯ ---
+    function init() {
+        renderTabs();
+        renderMenu();
+        loadHistory();
+    }
+
+    // --- ОТРИСОВКА ТАБОВ ---
+    function renderTabs() {
+        const nav = document.getElementById('nav-bar');
+        nav.innerHTML = menuData.map(cat => 
+            `<div class="nav-item ${cat.category === currentCategory ? 'active' : ''}" 
+                  onclick="setCategory('${cat.category}')">${cat.category}</div>`
+        ).join('') + `<div class="nav-item" onclick="switchView('history')">📜 История</div>`;
+    }
+
+    function setCategory(cat) {
+        currentCategory = cat;
+        switchView('main');
+        renderTabs();
+        renderMenu();
+    }
+
+    // --- ОТРИСОВКА МЕНЮ ---
+    function renderMenu() {
+        const container = document.getElementById('menu-container');
+        const categoryData = menuData.find(c => c.category === currentCategory);
+        
+        container.innerHTML = categoryData.items.map(item => {
+            const qty = cart[item.id] ? cart[item.id].qty : 0;
+            return `
+            <div class="card fade-in">
+                <img src="${item.img}">
+                <h3>${item.name}</h3>
+                <div class="desc">${item.desc}</div>
+                <div class="card-footer">
+                    <div class="price">${item.price} ₽</div>
+                    ${qty === 0 
+                        ? `<button class="add-btn" onclick="addToCart('${item.id}', '${item.name}', ${item.price})">Добавить</button>`
+                        : `<button class="add-btn active" onclick="openCart()">В корзине (${qty})</button>`
+                    }
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // --- ЛОГИКА КОРЗИНЫ ---
+    function addToCart(id, name, price) {
+        if (!cart[id]) cart[id] = { name, price, qty: 0 };
+        cart[id].qty++;
+        updateCartUI();
+        renderMenu(); // Обновить кнопки
+    }
+
+    function changeQty(id, change) {
+        if (cart[id]) {
+            cart[id].qty += change;
+            if (cart[id].qty <= 0) delete cart[id];
+        }
+        updateCartUI();
+        renderCartItems();
+        renderMenu();
+    }
+
+    function updateCartUI() {
+        let total = 0;
+        let count = 0;
+        for (let id in cart) {
+            total += cart[id].price * cart[id].qty;
+            count += cart[id].qty;
+        }
+        
+        document.getElementById('total-price').innerText = `${total} ₽`;
+        const btn = document.getElementById('cart-btn');
+        
+        if (count > 0) {
+            btn.innerText = `Оформить (${count})`;
+            btn.style.background = "var(--green)";
+        } else {
+            btn.innerText = "Корзина пуста";
+            btn.style.background = "#ccc";
+        }
+        
+        // Показать форму, если есть товары
+        document.getElementById('order-form').style.display = count > 0 ? 'block' : 'none';
+        document.getElementById('checkout-btn').style.display = count > 0 ? 'block' : 'none';
+    }
+
+    function openCart() {
+        if (Object.keys(cart).length === 0) return;
+        document.getElementById('cart-modal').style.display = 'flex';
+        renderCartItems();
+    }
+
+    function closeCart() {
+        document.getElementById('cart-modal').style.display = 'none';
+    }
+
+    function renderCartItems() {
+        const list = document.getElementById('cart-list');
+        if (Object.keys(cart).length === 0) {
+            list.innerHTML = "<div style='text-align:center; padding:20px; color:#999'>Пусто 😔</div>";
+            return;
+        }
+
+        list.innerHTML = Object.keys(cart).map(id => {
+            const item = cart[id];
+            return `
+            <div class="cart-item">
+                <div>
+                    <div style="font-weight:bold">${item.name}</div>
+                    <div style="font-size:13px; color:#777">${item.price} ₽</div>
+                </div>
+                <div class="qty-control">
+                    <button class="qty-btn" onclick="changeQty('${id}', -1)">-</button>
+                    <span>${item.qty}</span>
+                    <button class="qty-btn" onclick="changeQty('${id}', 1)">+</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // --- ОФОРМЛЕНИЕ ---
+    function selectOption(group, value) {
+        if (group === 'delivery') {
+            deliveryType = value;
+            document.getElementById('address-block').style.display = value === 'delivery' ? 'block' : 'none';
+        } else {
+            paymentType = value;
+        }
+        
+        // Визуальное переключение
+        const options = document.querySelectorAll(`.radio-option[onclick*="'${group}'"]`);
+        options.forEach(opt => {
+            if (opt.getAttribute('onclick').includes(`'${value}'`)) opt.classList.add('selected');
+            else opt.classList.remove('selected');
+        });
+    }
+
+    function submitOrder() {
+        const phone = document.getElementById('phone').value;
+        const address = document.getElementById('address').value;
+
+        if (!phone) {
+            alert("Пожалуйста, введите номер телефона!");
+            return;
+        }
+        if (deliveryType === 'delivery' && !address) {
+            alert("Пожалуйста, введите адрес доставки!");
+            return;
+        }
+
+        // Сохраняем в историю
+        const total = document.getElementById('total-price').innerText;
+        saveToHistory(cart, total);
+
+        const data = {
+            cart: cart,
+            total: total,
+            delivery: deliveryType === 'delivery' ? 'Доставка' : 'Самовывоз',
+            address: deliveryType === 'delivery' ? address : 'Не требуется',
+            phone: phone,
+            payment: paymentType === 'transfer' ? 'Перевод/Наличные' : 'ЮKassa (Онлайн)'
+        };
+
+        tg.sendData(JSON.stringify(data));
+    }
+
+    // --- ИСТОРИЯ ---
+    function saveToHistory(orderCart, total) {
+        let history = JSON.parse(localStorage.getItem('del_pizza_history') || "[]");
+        const date = new Date().toLocaleString("ru-RU", {day: 'numeric', month: 'long', hour:'2-digit', minute:'2-digit'});
+        
+        // Создаем краткое описание
+        const summary = Object.values(orderCart).map(i => `${i.name} x${i.qty}`).join(", ");
+        
+        history.unshift({ date, summary, total });
+        if (history.length > 10) history.pop(); // Храним последние 10
+        localStorage.setItem('del_pizza_history', JSON.stringify(history));
+    }
+
+    function loadHistory() {
+        const list = document.getElementById('history-list');
+        const history = JSON.parse(localStorage.getItem('del_pizza_history') || "[]");
+        
+        if (history.length === 0) {
+            list.innerHTML = "<div style='text-align:center; padding:20px; color:#999'>История пуста</div>";
+            return;
+        }
+
+        list.innerHTML = history.map(h => `
+            <div class="history-card">
+                <div class="history-date">${h.date}</div>
+                <div style="margin: 5px 0;">${h.summary}</div>
+                <div class="history-total">${h.total}</div>
+                <div style="clear:both"></div>
+            </div>
+        `).join('');
+    }
+
+    function switchView(view) {
+        document.getElementById('main-view').style.display = view === 'main' ? 'block' : 'none';
+        document.getElementById('history-view').style.display = view === 'history' ? 'block' : 'none';
+        if (view === 'history') loadHistory();
+    }
+
+    // Запуск
+    init();
+</script>
+</body>
+</html>
